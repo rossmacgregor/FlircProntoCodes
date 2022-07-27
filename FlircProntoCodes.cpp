@@ -11,7 +11,7 @@ long const Burst1PairCount = 0x0000;
 
 void PrintWord(long word) { cout << hex << setfill('0') << setw(4) << word << " "; }
 
-void PushBits(char n, vector<char> & bits)
+void PushBits(long n, vector<char> & bits)
 {
     bits.push_back((n & 0x8) >> 3);
     bits.push_back((n & 0x4) >> 2);
@@ -21,7 +21,9 @@ void PushBits(char n, vector<char> & bits)
 
 int main(int argc, const char * argv[])
 {
-    if (argc != 3)
+    int commandCodeRadix = 16;
+
+    if (argc < 3 || argc > 4)
     {
         cerr
             << "Usage: FlircProntoCodes <DeviceCode> <CommandCode>\n"
@@ -32,18 +34,29 @@ int main(int argc, const char * argv[])
         return 1;
     }
 
+    if (argc == 4 && string(argv[3]) == "dec")
+    {
+        commandCodeRadix = 10;
+    }
+    else
+    {
+        cerr
+            << "Invalid radix argument: " << argv[3] << "\n";
+        return 2;
+    }
+
     long deviceCode = strtol(argv[1], nullptr, 16);
-    long commandCode = strtol(argv[2], nullptr, 16);
+    long commandCode = strtol(argv[2], nullptr, commandCodeRadix);
 
     if (deviceCode < 0 || deviceCode > 0xf)
     {
         cerr << "Invalid device code: " << argv[2];
-        return 2;
+        return 3;
     }
     if (commandCode < 0 || commandCode > 0xff)
     {
         cerr << "Invalid command code: " << argv[1];
-        return 3;
+        return 4;
     }
 
     // Positive values indicate number of frames LED is on, negative values
@@ -63,14 +76,14 @@ int main(int argc, const char * argv[])
     };
 
     // convert the deviceCode and commandCode to a stream of nibbles
-    vector<char> nibbles;
+    vector<long> nibbles;
     nibbles.push_back(deviceCode);
     nibbles.push_back(commandCode >> 4);
     nibbles.push_back(commandCode & 0x0f);
 
     // convert our nibbles to a stream of bits
     vector<char> bits;
-    for (char n : nibbles) PushBits(n, bits);
+    for (long n : nibbles) PushBits(n, bits);
 
     // add bits to the edge data
     for (char bit : bits)
@@ -108,11 +121,17 @@ int main(int argc, const char * argv[])
         burst2Pairs.push_back( e < 0 ? -e : e);
     }
 
+    cout
+        << "[0x" << hex << setfill('0') << setw(2) << deviceCode << ", "
+        << "0x" << hex << setfill('0') << setw(2) << commandCode << "] ";
+
     PrintWord(RawDataCode);
     PrintWord(CarrierFrequency);
     PrintWord(Burst1PairCount);
     PrintWord(burst2Pairs.size() / 2);
     for (long w : burst2Pairs) PrintWord(w);
+
+    cout << "\n";
 
     return 0;
 }
